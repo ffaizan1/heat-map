@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Heatmap Tutorial: Chicago Robbery Crime Hotspots</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
+  <script src="crimeData.js"></script> <!-- GeoJSON crime data -->
+
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+    }
+
+    #map {
+      width: 100%;
+      height: 100vh;
+    }
+
+    #map-title {
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1000;
+      background: rgba(255, 255, 255, 0.9);
+      color: black;
+      padding: 10px 20px;
+      font-size: 24px;
+      font-weight: bold;
+      text-align: center;
+      border: 2px solid black;
+      border-radius: 5px;
+      box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+    }
+
+    .legend {
+      background: white;
+      padding: 10px;
+      line-height: 18px;
+      color: #555;
+      font-size: 14px;
+      box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+      border-radius: 5px;
+    }
+
+    .legend i {
+      width: 18px;
+      height: 18px;
+      float: left;
+      margin-right: 8px;
+      opacity: 0.7;
+    }
+
+    .custom-tooltip {
+      background: white;
+      border: 1px solid gray;
+      padding: 5px;
+      color: black;
+      font-size: 12px;
+      border-radius: 3px;
+      box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.3);
+    }
+  </style>
+</head>
+<body>
+  <div id="map-title">2023 Chicago Robbery Crime Hotspots</div>
+ <div id="map" style="height: 600px;"></div>
+
+
+  <script>
+    // Initialize the map
+    var map = L.map('map', {
+      center: [41.85, -87.65], // Center on Chicago
+      zoom: 11, // Set appropriate zoom level
+      maxZoom: 15,
+      minZoom: 10,
+    });
+
+    // Add tile layer
+    L.tileLayer('https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png', {
+      attribution: 'Map tiles by Carto, under CC BY 3.0. Data by OpenStreetMap, under ODbL.',
+    }).addTo(map);
+
+    // Prepare heatmap data
+    var heatPoints = crimeData.features.map(function(feature) {
+      var coords = feature.geometry.coordinates;
+      var intensity = parseFloat(feature.properties["Crime Count"]);
+      return [coords[1], coords[0], intensity]; // Lat, Lng, Intensity
+    });
+
+    // Add heatmap layer
+    var heat = L.heatLayer(heatPoints, {
+      radius: 25,
+      blur: 15,
+      maxZoom: 17,
+      opacity: 0.6
+    }).addTo(map);
+
+    // Add invisible circle markers with mouseover functionality
+    crimeData.features.forEach(function(feature) {
+      var coords = feature.geometry.coordinates;
+      var CommunityName = feature.properties["Community"];
+
+      var marker = L.circleMarker([coords[1], coords[0]], {
+        radius: 10,
+        color: 'transparent',
+        fillOpacity: 0.01,
+      }).addTo(map);
+
+      // Mouseover tooltip
+      marker.on('mouseover', function() {
+        marker.bindTooltip(`Community: ${CommunityName}<br>Crime Count: ${feature.properties["Crime Count"]}`, {
+          permanent: false,
+          direction: "top",
+          opacity: 0.9,
+          className: 'custom-tooltip'
+        }).openTooltip();
+      });
+
+      // Close tooltip on mouseout
+      marker.on('mouseout', function() {
+        marker.closeTooltip();
+      });
+    });
+
+    // Add legend control for "High to Low" gradient
+var legend = L.control({ position: 'bottomright' });
+
+legend.onAdd = function(map) {
+    var div = L.DomUtil.create('div', 'legend');
+    var grades = ['High', 'Moderate-High', 'Moderate', 'Moderate-Low', 'Low', 'Very Low']; // Updated labels for clarity
+    var colors = ['#f00', '#f90', '#ff0', '#0f0', '#0ff', '#00f']; // Gradient colors
+
+    div.innerHTML += '<h4>Crime Count</h4>';
+    for (var i = 0; i < grades.length; i++) {
+        div.innerHTML +=
+            '<i style="background:' + colors[i] + '; width: 18px; height: 18px; display: inline-block; margin-right: 4px;"></i> ' +
+            grades[i] + '<br>';
+    }
+
+    return div;
+};
+
+    legend.addTo(map);
+  </script>
+</body>
+</html>
